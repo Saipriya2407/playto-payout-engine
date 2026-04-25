@@ -1,8 +1,7 @@
 from django.urls import path
-from .views import create_payout
+from .views import create_payout,payout_list
+
 urlpatterns = [
- path(
- 'payouts/',
- create_payout
- )
+path('payouts/',payout_list),
+path('payout-request/',create_payout),
 ]
