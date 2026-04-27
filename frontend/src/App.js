@@ -5,14 +5,9 @@ import axios from "axios";
 
 function App(){
 
-const [balance]=
-useState(50000);
+const [balance]=useState(50000);
 
-const [amount,setAmount]=
-useState("");
-
-const [payouts,setPayouts]=
-useState([]);
+const [payouts,setPayouts]=useState([]);
 
 
 
@@ -21,7 +16,7 @@ const loadPayouts=async()=>{
 try{
 
 const res=await axios.get(
-"http://localhost:8000/api/v1/payouts/"
+"http://127.0.0.1:8000/api/v1/payouts/"
 );
 
 setPayouts(
@@ -29,70 +24,10 @@ res.data
 );
 
 }catch(e){
-
 console.log(e);
-
-alert(
-"Error loading payouts"
-)
-
 }
 
 };
-
-
-
-const submitPayout=async()=>{
-
-try{
-
-const res=await fetch(
-"http://localhost:8000/api/v1/payout-request/",
-{
-method:"POST",
-
-headers:{
-"Content-Type":
-"application/json",
-
-"Idempotency-Key":
-Date.now().toString()
-},
-
-body:JSON.stringify({
-amount_paise:Number(
-amount
-),
-bank_account_id:
-"bank123"
-})
-
-}
-);
-
-const data=
-await res.json();
-
-console.log(data);
-
-alert(
-"Payout Requested"
-);
-
-loadPayouts();
-
-}catch(err){
-
-console.log(err);
-
-alert(
-"Request Failed"
-)
-
-}
-
-};
-
 
 
 useEffect(()=>{
@@ -118,21 +53,36 @@ Balance:
 </h2>
 
 
+
+<h2>
+Request Payout
+</h2>
+<form
+action="http://127.0.0.1:8000/api/v1/payout-request/"
+method="POST"
+encType="application/x-www-form-urlencoded"
+>
 <input
-value={amount}
-onChange={(e)=>
-setAmount(
-e.target.value
-)}
-placeholder="Amount in paise"
+name="amount_paise"
+defaultValue="1000"
 />
 
+<input
+name="bank_account_id"
+defaultValue="bank123"
+/>
+<input
+type="hidden"
+name="Idempotency-Key"
+value={Date.now()}
+/>
 
-<button
-onClick={submitPayout}
->
+<button type="submit">
 Withdraw
 </button>
+
+</form>
+
 
 
 <h2>
@@ -145,13 +95,7 @@ Payout History
 {payouts.map(p=>(
 
 <li key={p.id}>
-
-Amount:
-{p.amount_paise}
-{" "}
-Status:
-{p.status}
-
+Amount: {p.amount_paise} | Status: {p.status}
 </li>
 
 ))}

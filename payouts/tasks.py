@@ -13,8 +13,8 @@ payout_id
     payout.status='processing'
     payout.save()
 
-    # x=random.randint(1,100)
-    x=80
+    x=random.randint(1,100)
+    # x=80
 
     if x<=70:
 

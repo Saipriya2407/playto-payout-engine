@@ -1,67 +1,120 @@
 # Playto Payout Engine
 
+## Overview
+A payout engine built using Django, DRF, PostgreSQL, Celery and React.
+
+Supports:
+- Merchant ledger in paise
+- Idempotent payout requests
+- Concurrency-safe withdrawals
+- Async payout processing
+- Retry and failure handling
+- React merchant dashboard
+
+
 ## Tech Stack
+Backend:
 - Django
 - Django REST Framework
 - PostgreSQL
 - Celery
-- Redis
+- Redis/Memurai
+
+Frontend:
 - React
-- Tailwind
+
 
 ## Setup
 
 ### Clone
-git clone <repo_url>
-
+```bash
+git clone <repo-url>
 cd payout_engine
-
-
-### Create venv
-python -m venv venv
-
-venv\Scripts\activate
-
-
+```
 ### Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
+### Backend setup
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-### Run migrations
+### Database
+```bash
 python manage.py makemigrations
-
 python manage.py migrate
+```
 
-
-### Start server
+### Run backend
+```bash
 python manage.py runserver
+```
+
+### Start worker
+```bash
+python -m celery -A config worker --pool=solo --loglevel=info
+```
 
 
-### Start Celery worker
-python -m celery -A config.celery:app worker --pool=solo --loglevel=info
+## Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
 
 
-## API Endpoint
+## API
 
-POST /api/v1/payouts/
+POST:
+
+```http
+/api/v1/payout-request/
+```
 
 Headers:
+
+```text
 Idempotency-Key
+```
 
 Body:
+
+```json
 {
  "amount_paise":5000,
  "bank_account_id":"bank123"
 }
+```
 
 
-## Features
-- Merchant ledger
-- Concurrency-safe payouts
-- Idempotent API
-- Retry logic
-- Simulated settlement worker
+## Concurrency Test
 
+Run:
 
-## Test Concurrency
+```bash
 python concurrency_test.py
+```
+
+Expected:
+Two simultaneous payouts against insufficient balance:
+only one succeeds.
+
+
+## Features Implemented
+
+- Ledger based balance model
+- select_for_update locking
+- Idempotency key store
+- State machine:
+pending → processing → completed/failed
+
+- Retry logic
+- Refund on failure
+- React dashboard
+- Withdraw form

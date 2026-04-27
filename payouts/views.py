@@ -4,7 +4,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 from django.db import transaction
 
@@ -28,44 +27,45 @@ def payout_list(request):
     payouts=Payout.objects.all()
 
     s=PayoutSerializer(
-      payouts,
-      many=True
+        payouts,
+        many=True
     )
 
     return Response(
-      s.data
+        s.data
     )
 
 
 
-@csrf_exempt
 @api_view(['POST'])
+@csrf_exempt
 def create_payout(request):
 
     with transaction.atomic():
 
         merchant=Merchant.objects.select_for_update().get(
-        id=1
+            id=1
         )
 
 
         key=request.headers.get(
-          'Idempotency-Key'
+            'Idempotency-Key'
+        ) or request.data.get(
+            'Idempotency-Key'
         )
 
 
         if not key:
-
             return Response({
-            "error":
-            "Idempotency-Key required"
+                "error":
+                "Idempotency-Key required"
             },status=400)
 
 
 
-        existing = IdempotencyKey.objects.filter(
-          merchant=merchant,
-          key=key
+        existing=IdempotencyKey.objects.filter(
+            merchant=merchant,
+            key=key
         ).first()
 
 
@@ -73,20 +73,20 @@ def create_payout(request):
 
             return Response({
 
-            "message":
-            "Already processed",
+                "message":
+                "Already processed",
 
-            "payout_id":
-            existing.payout.id
+                "payout_id":
+                existing.payout.id
 
             })
 
 
 
         amount=int(
-        request.data[
-        'amount_paise'
-        ]
+            request.data[
+            'amount_paise'
+            ]
         )
 
 
@@ -94,8 +94,8 @@ def create_payout(request):
         if merchant.available_balance < amount:
 
             return Response({
-            "error":
-            "Insufficient balance"
+                "error":
+                "Insufficient balance"
             },status=400)
 
 
@@ -106,28 +106,28 @@ def create_payout(request):
 
 
         payout=Payout.objects.create(
-           merchant=merchant,
-           amount_paise=amount,
-           status='pending',
-           bank_account_id=request.data[
-           'bank_account_id'
-           ]
+            merchant=merchant,
+            amount_paise=amount,
+            status='pending',
+            bank_account_id=request.data[
+                'bank_account_id'
+            ]
         )
 
 
 
         LedgerEntry.objects.create(
-           merchant=merchant,
-           amount_paise=amount,
-           entry_type='debit'
+            merchant=merchant,
+            amount_paise=amount,
+            entry_type='debit'
         )
 
 
 
         IdempotencyKey.objects.create(
-           merchant=merchant,
-           key=key,
-           payout=payout
+            merchant=merchant,
+            key=key,
+            payout=payout
         )
 
 
@@ -139,6 +139,6 @@ def create_payout(request):
 
 
         return Response({
-        "message":"Payout created",
-        "payout_id":payout.id
+            "message":"Payout created",
+            "payout_id":payout.id
         })
