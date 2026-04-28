@@ -9,7 +9,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 
 DEBUG = False
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(",")
+ALLOWED_HOSTS = ["playto-payout-engine.onrender.com"]
 
 # APPLICATIONS
 INSTALLED_APPS = [
@@ -56,8 +56,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # DATABASE (Render PostgreSQL)
 DATABASES = {
-    'default': dj_database_url.parse(
-        os.environ.get("DATABASE_URL"),
+    'default': dj_database_url.config(
+default=os.environ.get("DATABASE_URL"),
         conn_max_age=600,
         ssl_require=True
     )
