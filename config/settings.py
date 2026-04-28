@@ -59,9 +59,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'playto',        # DB name in pgAdmin
-        'USER': 'postgres',      # your username
-        'PASSWORD': 'root',      # your password
+        'NAME': 'playto',       
+        'USER': 'postgres',     
+        'PASSWORD': 'root',    
         'HOST': 'localhost',
         'PORT': '5432',
     }
