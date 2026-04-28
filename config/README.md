@@ -1,120 +1,89 @@
-# Playto Payout Engine
+# 💸 Payout Engine
 
-## Overview
-A payout engine built using Django, DRF, PostgreSQL, Celery and React.
+A full-stack payout system built using Django, Celery, and React.
 
-Supports:
-- Merchant ledger in paise
-- Idempotent payout requests
-- Concurrency-safe withdrawals
-- Async payout processing
-- Retry and failure handling
-- React merchant dashboard
+---
 
+## 🚀 Features
 
-## Tech Stack
-Backend:
+- Create payout API
+- Idempotency handling (no duplicate payouts)
+- Balance validation
+- Ledger system (hold → debit / credit)
+- Async processing using Celery
+- Retry mechanism with failure handling
+- React frontend dashboard
+
+---
+
+## 🛠️ Tech Stack
+
+### Backend
 - Django
 - Django REST Framework
 - PostgreSQL
-- Celery
-- Redis/Memurai
+- Celery (for async tasks)
+- Redis (broker)
 
-Frontend:
-- React
+### Frontend
+- React.js
 
+---
 
-## Setup
+## ⚙️ How It Works
 
-### Clone
-```bash
-git clone <repo-url>
-cd payout_engine
-```
-### Install dependencies
+1. User sends payout request
+2. System checks balance
+3. Amount is put on HOLD
+4. Celery processes payout asynchronously
+5. On success → DEBIT
+6. On failure → retry (max 3 times)
+7. If failed → amount refunded (CREDIT)
+
+---
+
+## 🔑 Idempotency
+
+- Each request uses `Idempotency-Key`
+- Prevents duplicate payouts
+
+---
+
+## 🔄 Retry Logic
+
+- Failed payouts are retried automatically
+- Retry count tracked
+- Max retries → mark as FAILED
+
+---
+
+## 📊 APIs
+
+### Create Payout
+POST `/api/v1/payout-request/`
+
+### Get Payouts
+GET `/api/v1/payouts/`
+
+### Get Balance
+GET `/api/v1/balance/`
+
+---
+
+## 🖥️ Frontend
+
+- Withdraw money
+- View payout history
+- See retry count & status
+- Auto-refresh updates
+
+---
+
+## ▶️ Run Locally
+
+### Backend
 
 ```bash
 pip install -r requirements.txt
-```
-
-### Backend setup
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### Database
-```bash
-python manage.py makemigrations
 python manage.py migrate
-```
-
-### Run backend
-```bash
 python manage.py runserver
-```
-
-### Start worker
-```bash
-python -m celery -A config worker --pool=solo --loglevel=info
-```
-
-
-## Frontend
-```bash
-cd frontend
-npm install
-npm start
-```
-
-
-## API
-
-POST:
-
-```http
-/api/v1/payout-request/
-```
-
-Headers:
-
-```text
-Idempotency-Key
-```
-
-Body:
-
-```json
-{
- "amount_paise":5000,
- "bank_account_id":"bank123"
-}
-```
-
-
-## Concurrency Test
-
-Run:
-
-```bash
-python concurrency_test.py
-```
-
-Expected:
-Two simultaneous payouts against insufficient balance:
-only one succeeds.
-
-
-## Features Implemented
-
-- Ledger based balance model
-- select_for_update locking
-- Idempotency key store
-- State machine:
-pending → processing → completed/failed
-
-- Retry logic
-- Refund on failure
-- React dashboard
-- Withdraw form

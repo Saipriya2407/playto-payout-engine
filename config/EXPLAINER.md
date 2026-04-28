@@ -1,84 +1,122 @@
-# 1 The Ledger
+# 💡 Payout System - Explainer
 
-Credits and debits are modeled in LedgerEntry.
+## 📌 Overview
 
-Balance invariant:
+This project is a payout system where a merchant can request withdrawals.  
+The system ensures correctness, avoids duplicate processing, and handles failures using retries.
 
-balance = credits - debits
+---
 
-Debits created when payout requested.
-Credits returned on payout failure.
+## 🔑 Key Concepts
 
-This preserves money integrity.
+### 1. Idempotency
 
+Each payout request includes an `Idempotency-Key`.
 
+- If the same key is used again → no new payout is created
+- Existing payout is returned
 
-# 2 The Lock
+👉 This prevents duplicate transactions.
 
-Concurrency protection:
+---
 
-```python
-with transaction.atomic():
+### 2. Concurrency Handling
 
- merchant = Merchant.objects.select_for_update().get(id=1)
+To avoid double spending, I used:
 
- if merchant.available_balance < amount:
-     reject
+- `select_for_update()` (row locking)
+- Database transactions
 
- merchant.available_balance -= amount
- merchant.save()
-```
+👉 Ensures only one request modifies balance at a time.
 
-Database primitive:
-Row-level locking via SELECT FOR UPDATE.
+---
 
-Prevents simultaneous overdrafts.
+### 3. Ledger System
 
+Instead of directly updating balance, I used a ledger:
 
+- **HOLD** → when payout is initiated
+- **DEBIT** → when payout succeeds
+- **CREDIT** → when payout fails
 
-# 3 Idempotency
+👉 This provides traceability and consistency.
 
-Idempotency keys stored in IdempotencyKey model.
+---
 
-On repeated request:
+### 4. Async Processing (Celery)
 
-- lookup merchant + key
-- if found return existing payout response
-- no duplicate payout created
+Payout processing is handled in the background:
 
-If second request arrives while first in-flight,
-row lock prevents double processing.
+1. API creates payout (status = pending)
+2. Celery worker processes it
+3. Updates status to completed/failed
 
+👉 Improves performance and scalability.
 
+---
 
-# 4 State Machine
+### 5. Retry Mechanism
 
-Legal:
+- If payout fails → retry automatically
+- Retry count is tracked
+- Max retries = 3
+- After that → mark as FAILED and refund
 
-pending -> processing -> completed
+👉 Ensures reliability.
 
-pending -> processing -> failed
+---
 
-Illegal backward transitions are blocked in task logic.
+### 6. Failure Simulation
 
-Failed payouts atomically return held funds.
+To test retry logic:
 
+- Random failures are introduced
+- Mimics real-world payment failures
 
+---
 
-# 5 AI Audit
+## 🔄 System Flow
 
-Initial AI-generated version calculated balance
-from aggregated ledger rows during payout creation.
+1. User sends payout request
+2. Idempotency key is checked
+3. Merchant row is locked
+4. Balance is validated
+5. HOLD entry is created
+6. Payout is created (pending)
+7. Celery processes payout
+8. On success → DEBIT
+9. On failure → retry → eventually CREDIT
 
-This caused race-condition risk.
+---
 
-Caught issue during concurrency test where two
-simultaneous payouts both succeeded.
+## ⚠️ Edge Cases Handled
 
-Replaced with:
+- Duplicate requests → idempotency
+- Concurrent requests → row locking
+- Insufficient balance → rejected
+- Failures → retries
+- Max retries → refund
 
-- merchant available_balance field
-- select_for_update row lock
-- atomic balance decrement
+---
 
-This fixed overdraft race condition.
+## 🖥️ Frontend
+
+The React UI allows:
+
+- Creating payouts (withdraw)
+- Viewing payout history
+- Tracking retry count and status
+- Auto-refresh updates
+
+---
+
+## 🚀 Conclusion
+
+This system is:
+
+- **Safe** → idempotency + locking
+- **Reliable** → retry mechanism
+- **Scalable** → async processing
+- **Transparent** → ledger system
+
+👉 It simulates a real-world payout system used in fintech applications.

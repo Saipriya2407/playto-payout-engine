@@ -6,7 +6,7 @@ os.environ.setdefault(
 'config.settings'
 )
 
-app = Celery('config')
+app = Celery('config.settings')
 
 app.config_from_object(
 'django.conf:settings',

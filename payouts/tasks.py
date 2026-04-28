@@ -1,59 +1,65 @@
-from celery import shared_task
 import random
-from .models import (Payout,LedgerEntry)
-@shared_task
-def process_payout(
-payout_id
-):
-
-    payout=Payout.objects.get(
-      id=payout_id
-    )
-
-    payout.status='processing'
-    payout.save()
-
-    x=random.randint(1,100)
-    # x=80
-
-    if x<=70:
-
-        payout.status='completed'
-        payout.save()
+from celery import shared_task
+from django.db import transaction
+from .models import Payout, LedgerEntry
 
 
-    elif x<=90:
+@shared_task(bind=True, max_retries=3)
+def process_payout(self, payout_id):
+    try:
+        with transaction.atomic():
+            payout = Payout.objects.select_for_update().get(id=payout_id)
 
-        payout.status='failed'
-        payout.save()
+            # ✅ If already completed, skip
+            if payout.status == 'completed':
+                return
 
-        LedgerEntry.objects.create(
-            merchant=payout.merchant,
-            amount_paise=
-            payout.amount_paise,
-            entry_type='credit'
-        )
-
-
-    else:
-
-        if payout.retry_count <3:
-
-            payout.retry_count+=1
+            # ✅ Mark as processing
+            payout.status = 'processing'
             payout.save()
 
-            process_payout.delay(
-              payout.id
-            )
+            print(f"Processing payout {payout.id}, retry {payout.retry_count}")
 
-        else:
+            # ❌ Simulate failure (70% chance)
+            if random.random() < 0.7:
+                payout.retry_count =self.request.retries+1
+                payout.save()
+                raise Exception("force retry")
 
-            payout.status='failed'
+            # ✅ SUCCESS
+            payout.status = 'completed'
             payout.save()
 
+            # ✅ Convert HOLD → DEBIT
             LedgerEntry.objects.create(
-              merchant=payout.merchant,
-              amount_paise=
-              payout.amount_paise,
-              entry_type='credit'
+                merchant=payout.merchant,
+                payout=payout,
+                amount_paise=payout.amount_paise,
+                entry_type='debit'
             )
+
+    except Exception as e:
+
+        # ❌ MAX RETRY REACHED
+        if self.request.retries >= self.max_retries:
+            with transaction.atomic():
+                payout = Payout.objects.select_for_update().get(id=payout_id)
+
+                payout.status = 'failed'
+                payout.save()
+
+                print(f"Payout {payout.id} FAILED after retries")
+
+                # ✅ Refund HOLD → CREDIT
+                LedgerEntry.objects.create(
+                    merchant=payout.merchant,
+                    payout=payout,
+                    amount_paise=payout.amount_paise,
+                    entry_type='credit'
+                )
+            return
+
+        print(f"Retrying payout {payout_id}...")
+
+        # 🔁 Retry after 3 seconds
+        raise self.retry(exc=e, countdown=3)
