@@ -1,15 +1,13 @@
 from pathlib import Path
 import os
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = 'your-secret-key-here'
+DEBUG = True
 
-DEBUG = False
-
-ALLOWED_HOSTS = ["playto-payout-engine.onrender.com"]
+ALLOWED_HOSTS = []
 
 # APPLICATIONS
 INSTALLED_APPS = [
@@ -19,11 +17,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework',
-    'payouts',
     'corsheaders',
+    'payouts',
 ]
 
+# MIDDLEWARE
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -37,6 +37,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+# TEMPLATES
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -54,13 +55,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# DATABASE (Render PostgreSQL)
+# ✅ POSTGRESQL DATABASE (LOCAL)
 DATABASES = {
-    'default': dj_database_url.config(
-default=os.environ.get("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'playto',        # DB name in pgAdmin
+        'USER': 'postgres',      # your username
+        'PASSWORD': 'root',      # your password
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
 }
 
 # PASSWORD VALIDATION
@@ -77,23 +81,16 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# STATIC
+# STATIC FILES
 STATIC_URL = 'static/'
 
-# CELERY (optional, ok to keep)
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-
-# CORS
+# CORS (for React frontend)
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['content-type', 'idempotency-key']
 CORS_ALLOW_METHODS = ['GET', 'POST', 'OPTIONS']
 
-# CSRF (add your Render URL also)
+# CSRF
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "https://*.onrender.com"
+    "http://localhost:3000"
 ]
-STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
